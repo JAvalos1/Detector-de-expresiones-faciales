@@ -1,3 +1,17 @@
+##################################################################################
+#Detector de Expresiones Faciales
+#
+#Autor: Julio Fabian Avalos Peralta
+#Institucion: Facultad de Ingenieria UNA
+#Materia: Robotica 2
+#
+#Referencias:
+# -Facial landmarks with dlib, OpenCV, and Python  [https://www.pyimagesearch.com/2017/04/03/facial-landmarks-dlib-opencv-python/?_ga=2.267746444.321007053.1637623315-444521202.1637623315]
+# -Drowsiness detection with OpenCV [https://www.pyimagesearch.com/2017/05/08/drowsiness-detection-opencv/]
+# -Real-time facial landmark detection with OpenCV, Python, and dlib [https://www.pyimagesearch.com/2017/04/17/real-time-facial-landmark-detection-opencv-python-dlib/]
+# -Real-Time Eye Blink Detection using Facial Landmarks [http://vision.fe.uni-lj.si/cvww2016/proceedings/papers/05.pdf]
+##################################################################################
+
 # import the necessary packages
 from imutils.video import VideoStream
 from imutils import face_utils
@@ -43,8 +57,8 @@ time.sleep(2.0)
 # blink and then a second constant for the number of consecutive
 # frames the eye must be below the threshold for to set off the
 # alarm
-EYE_AR_THRESH = 0.3
-EYE_AR_CONSEC_FRAMES = 30
+EYE_AR_THRESH = 0.35
+EYE_AR_CONSEC_FRAMES = 10
 # initialize the frame counter as well as a boolean used to
 # indicate if the alarm is going off
 COUNTER = 0
@@ -161,8 +175,8 @@ while True:
 			cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 2)
 
 	## Para detectar ojos cerrados
-	dist_ojoD = ((shape[37][0]-shape[41][0])**2+(shape[37][1]-shape[41][1])**2)**0.5
-	dist_ojoI = ((shape[44][0]-shape[46][0])**2+(shape[44][1]-shape[46][1])**2)**0.5
+	#dist_ojoD = ((shape[37][0]-shape[41][0])**2+(shape[37][1]-shape[41][1])**2)**0.5
+	#dist_ojoI = ((shape[44][0]-shape[46][0])**2+(shape[44][1]-shape[46][1])**2)**0.5
 	
 	leftEAR = eye_aspect_ratio(ojoI)
 	rightEAR = eye_aspect_ratio(ojoD)
@@ -172,26 +186,26 @@ while True:
 	#print(dist_ojoD)
 	#print(dist_ojoI)
 
-	if leftEAR < EYE_AR_THRESH and rightEAR < EYE_AR_THRESH:
-		COUNTER += 1
-		# if the eyes were closed for a sufficient number of
-		# then sound the alarm
-		if COUNTER >= EYE_AR_CONSEC_FRAMES:
-			cv2.putText(frame, "Ambas ojos cerrados", (x - 150, y - 150),
-				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif leftEAR < EYE_AR_THRESH:
+	if leftEAR < EYE_AR_THRESH and leftEAR < rightEAR:
 		COUNTER += 1
 		# if the eyes were closed for a sufficient number of
 		# then sound the alarm
 		if COUNTER >= EYE_AR_CONSEC_FRAMES:
 			cv2.putText(frame, "ojo izquierdo cerrado", (x+150, y - 150),
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif rightEAR < EYE_AR_THRESH:
+	elif rightEAR < EYE_AR_THRESH and rightEAR < leftEAR:
 		COUNTER += 1
 		# if the eyes were closed for a sufficient number of
 		# then sound the alarm
 		if COUNTER >= EYE_AR_CONSEC_FRAMES:
 			cv2.putText(frame, "ojo derecho cerrado", (x - 50, y - 150),
+				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	elif leftEAR < EYE_AR_THRESH and rightEAR < EYE_AR_THRESH:
+		COUNTER += 1
+		# if the eyes were closed for a sufficient number of
+		# then sound the alarm
+		if COUNTER >= EYE_AR_CONSEC_FRAMES:
+			cv2.putText(frame, "Ambas ojos cerrados", (x - 150, y - 150),
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 	else:
 		COUNTER = 0
@@ -221,3 +235,8 @@ cv2.destroyAllWindows()
 vs.stop()
 
 ## Para ejecutar: python video_facial_landmarks.py --shape-predictor shape_predictor_68_face_landmarks.dat
+
+## Posibles mejoras a implementar: 
+## -agregarle una relacion pixel cm PPC o PPI para que las distancias sean mas representativas
+## -buscar la forma de que el sistema de coordenadas se centre en un punto, por ej de la nariz
+##	de esta forma se consigue mas generalidad en las coordenadas de los puntos del rostro
