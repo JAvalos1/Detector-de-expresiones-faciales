@@ -59,6 +59,7 @@ time.sleep(2.0)
 # alarm
 EYE_AR_THRESH = 0.35
 EYE_AR_CONSEC_FRAMES = 10
+tolerancia = 0.02
 # initialize the frame counter as well as a boolean used to
 # indicate if the alarm is going off
 COUNTER = 0
@@ -132,7 +133,7 @@ while True:
 		# Se traza la nariz
 		nariz = face_utils.FACIAL_LANDMARKS_IDXS['nose']
 		nariz1 = shape[nariz[0]:nariz[-1]-5]
-		nariz2 = shape[nariz[-1]-5:nariz[-1]]
+		nariz2 = shape[nariz[-1]-6:nariz[-1]]
 		nariz1Hull = cv2.convexHull(nariz1)
 		nariz2Hull = cv2.convexHull(nariz2)
 		cv2.drawContours(frame, [nariz1Hull], -1, (0, 0, 255), 1)
@@ -186,26 +187,26 @@ while True:
 	#print(dist_ojoD)
 	#print(dist_ojoI)
 
-	if leftEAR < EYE_AR_THRESH and leftEAR < rightEAR:
+	if leftEAR < EYE_AR_THRESH and leftEAR - rightEAR < -tolerancia:
 		COUNTER += 1
 		# if the eyes were closed for a sufficient number of
 		# then sound the alarm
 		if COUNTER >= EYE_AR_CONSEC_FRAMES:
-			cv2.putText(frame, "ojo izquierdo cerrado", (x+150, y - 150),
+			cv2.putText(frame, "Guiño izquierda", (x+100, y - 150),
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif rightEAR < EYE_AR_THRESH and rightEAR < leftEAR:
+	elif rightEAR < EYE_AR_THRESH and leftEAR - rightEAR > tolerancia:
 		COUNTER += 1
 		# if the eyes were closed for a sufficient number of
 		# then sound the alarm
 		if COUNTER >= EYE_AR_CONSEC_FRAMES:
-			cv2.putText(frame, "ojo derecho cerrado", (x - 50, y - 150),
+			cv2.putText(frame, "Guiño derecha", (x-300, y - 150),
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 	elif leftEAR < EYE_AR_THRESH and rightEAR < EYE_AR_THRESH:
 		COUNTER += 1
 		# if the eyes were closed for a sufficient number of
 		# then sound the alarm
 		if COUNTER >= EYE_AR_CONSEC_FRAMES:
-			cv2.putText(frame, "Ambas ojos cerrados", (x - 150, y - 150),
+			cv2.putText(frame, "Ambos ojos cerrados", (x, y - 150),
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 	else:
 		COUNTER = 0
