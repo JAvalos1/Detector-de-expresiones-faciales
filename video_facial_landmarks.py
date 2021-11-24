@@ -7,6 +7,21 @@ import imutils
 import time
 import dlib
 import cv2
+from scipy.spatial import distance as dist
+
+def eye_aspect_ratio(eye):
+	# compute the euclidean distances between the two sets of
+	# vertical eye landmarks (x, y)-coordinates
+	A = dist.euclidean(eye[1], eye[5])
+	B = dist.euclidean(eye[2], eye[4])
+	# compute the euclidean distance between the horizontal
+	# eye landmark (x, y)-coordinates
+	C = dist.euclidean(eye[0], eye[3])
+	# compute the eye aspect ratio
+	ear = (A + B) / (2.0 * C)
+	# return the eye aspect ratio
+	return ear
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-p", "--shape-predictor", required=True,
@@ -24,7 +39,15 @@ print("[INFO] camera sensor warming up...")
 vs = VideoStream(usePiCamera=args["picamera"] > 0).start()
 time.sleep(2.0)
 
-dist_smile0 = 0
+# define two constants, one for the eye aspect ratio to indicate
+# blink and then a second constant for the number of consecutive
+# frames the eye must be below the threshold for to set off the
+# alarm
+EYE_AR_THRESH = 0.3
+EYE_AR_CONSEC_FRAMES = 30
+# initialize the frame counter as well as a boolean used to
+# indicate if the alarm is going off
+COUNTER = 0
 
 # loop over the frames from the video stream
 while True:
@@ -54,8 +77,60 @@ while True:
 		# loop over the (x, y)-coordinates for the facial landmarks
 		# and draw them on the image
 		for (x, y) in shape:
-			cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+			cv2.circle(frame, (x, y), 0, (0, 0, 255), -1)
 
+		# Se trazan los labios
+		boca1 = face_utils.FACIAL_LANDMARKS_IDXS['mouth']
+		boca1 = shape[boca1[0]:boca1[-1]]
+		boca1Hull = cv2.convexHull(boca1)
+		cv2.drawContours(frame, [boca1Hull], -1, (0, 0, 255), 1)
+
+		# Se trazan los labios (interior)
+		boca2 = face_utils.FACIAL_LANDMARKS_IDXS['inner_mouth']
+		boca2 = shape[boca2[0]:boca2[-1]]
+		boca2Hull = cv2.convexHull(boca2)
+		cv2.drawContours(frame, [boca2Hull], -1, (0, 0, 255), 1)
+		
+		# Se traza la ceja derecha
+		cejaD = face_utils.FACIAL_LANDMARKS_IDXS['right_eyebrow']
+		cejaD = shape[cejaD[0]:cejaD[-1]]
+		cejaDHull = cv2.convexHull(cejaD)
+		cv2.drawContours(frame, [cejaDHull], -1, (0, 0, 255), 1)
+		
+		# Se traza la ceja izquierda
+		cejaI = face_utils.FACIAL_LANDMARKS_IDXS['left_eyebrow']
+		cejaI = shape[cejaI[0]:cejaI[-1]]
+		cejaIHull = cv2.convexHull(cejaI)
+		cv2.drawContours(frame, [cejaIHull], -1, (0, 0, 255), 1)
+		
+		# Se traza el ojo derecho
+		ojoD = face_utils.FACIAL_LANDMARKS_IDXS['right_eye']
+		ojoD = shape[ojoD[0]:ojoD[-1]]
+		ojoDHull = cv2.convexHull(ojoD)
+		cv2.drawContours(frame, [ojoDHull], -1, (0, 0, 255), 1)
+		
+		# Se trazan el ojo izquierdo
+		ojoI = face_utils.FACIAL_LANDMARKS_IDXS['left_eye']
+		ojoI = shape[ojoI[0]:ojoI[-1]]
+		ojoIHull = cv2.convexHull(ojoI)
+		cv2.drawContours(frame, [ojoIHull], -1, (0, 0, 255), 1)
+		
+		# Se traza la nariz
+		nariz = face_utils.FACIAL_LANDMARKS_IDXS['nose']
+		nariz1 = shape[nariz[0]:nariz[-1]-5]
+		nariz2 = shape[nariz[-1]-5:nariz[-1]]
+		nariz1Hull = cv2.convexHull(nariz1)
+		nariz2Hull = cv2.convexHull(nariz2)
+		cv2.drawContours(frame, [nariz1Hull], -1, (0, 0, 255), 1)
+		cv2.drawContours(frame, [nariz2Hull], -1, (0, 0, 255), 1)
+
+		#Se traza el menton
+		#menton = face_utils.FACIAL_LANDMARKS_IDXS['jaw']
+		#menton = shape[menton[0]:menton[-1]]
+		#mentonHull = cv2.convexHull(menton)
+		#cv2.drawContours(frame, [menton], -1, (0, 0, 255), 1)
+		
+	#print(ojoD)
 	## Para detectar sonrisas
 	dist_smile = ((shape[48][0]-shape[54][0])**2+(shape[48][0]-shape[54][1])**2)**0.5
 	#diff_smile = dist_smile - dist_smile0
@@ -64,18 +139,18 @@ while True:
 			cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 2)
 	
 	## Para detectar movimiento de las cejas
-	dist_cejaD = ((shape[19][1]-shape[27][1])**2)**0.5
-	dist_cejaI = ((shape[24][1]-shape[27][1])**2)**0.5
-	print(dist_cejaD)
-	print(dist_cejaI)
+	dist_cejaD = ((shape[19][0]-shape[27][0])**2+(shape[19][1]-shape[27][1])**2)**0.5
+	dist_cejaI = ((shape[24][0]-shape[27][0])**2+(shape[24][1]-shape[27][1])**2)**0.5
+	#print(dist_cejaD)
+	#print(dist_cejaI)
 
-	if dist_cejaD>50 and dist_cejaI>50:
+	if dist_cejaD>98 and dist_cejaI>98:
 		cv2.putText(frame, "Ambas cejas levantadas", (x - 200, y - 250),
 			cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif dist_cejaD>50:
+	elif dist_cejaD>98:
 		cv2.putText(frame, "ceja derecha levantada", (x - 200, y - 250),
 			cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif dist_cejaI>50:
+	elif dist_cejaI>98:
 		cv2.putText(frame, "ceja izquierda levantada", (x - 200, y - 250),
 			cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -86,20 +161,50 @@ while True:
 			cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 2)
 
 	## Para detectar ojos cerrados
-	dist_ojoD = ((shape[37][1]-shape[41][1])**2)**0.5
-	dist_ojoI = ((shape[44][1]-shape[46][1])**2)**0.5
+	dist_ojoD = ((shape[37][0]-shape[41][0])**2+(shape[37][1]-shape[41][1])**2)**0.5
+	dist_ojoI = ((shape[44][0]-shape[46][0])**2+(shape[44][1]-shape[46][1])**2)**0.5
+	
+	leftEAR = eye_aspect_ratio(ojoI)
+	rightEAR = eye_aspect_ratio(ojoD)
+	
+	print(leftEAR)
+	print(rightEAR)
 	#print(dist_ojoD)
 	#print(dist_ojoI)
 
-	if dist_ojoD<12 and dist_ojoI<12:
-		cv2.putText(frame, "Ambas ojos cerrados", (x - 150, y - 150),
-			cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif dist_ojoD<12:
-		cv2.putText(frame, "ojo derecho cerrado", (x + 50, y - 150),
-			cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-	elif dist_ojoI<12:
-		cv2.putText(frame, "ojo izquierdo cerrado", (x-250, y - 150),
-			cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	if leftEAR < EYE_AR_THRESH and rightEAR < EYE_AR_THRESH:
+		COUNTER += 1
+		# if the eyes were closed for a sufficient number of
+		# then sound the alarm
+		if COUNTER >= EYE_AR_CONSEC_FRAMES:
+			cv2.putText(frame, "Ambas ojos cerrados", (x - 150, y - 150),
+				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	elif leftEAR < EYE_AR_THRESH:
+		COUNTER += 1
+		# if the eyes were closed for a sufficient number of
+		# then sound the alarm
+		if COUNTER >= EYE_AR_CONSEC_FRAMES:
+			cv2.putText(frame, "ojo izquierdo cerrado", (x+150, y - 150),
+				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	elif rightEAR < EYE_AR_THRESH:
+		COUNTER += 1
+		# if the eyes were closed for a sufficient number of
+		# then sound the alarm
+		if COUNTER >= EYE_AR_CONSEC_FRAMES:
+			cv2.putText(frame, "ojo derecho cerrado", (x - 50, y - 150),
+				cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	else:
+		COUNTER = 0
+
+	#if dist_ojoD<15 and dist_ojoI<15:
+	#	cv2.putText(frame, "Ambas ojos cerrados", (x - 150, y - 150),
+	#		cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	#elif dist_ojoD<15:
+	#	cv2.putText(frame, "ojo derecho cerrado", (x + 50, y - 150),
+	#		cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+	#elif dist_ojoI<15:
+	#	cv2.putText(frame, "ojo izquierdo cerrado", (x-250, y - 150),
+	#		cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
 	#cv2.circle(frame, (shape[54][0], shape[54][1]), 5, (0, 255, 0), -1)
 	#cv2.circle(frame, (shape[48][0], shape[48][1]), 5, (0, 255, 0), -1)  
